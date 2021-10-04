@@ -1,6 +1,25 @@
 local lg = love.graphics
 local t = 0
 
+local State = {
+  MENU = 1,
+  PLAYING = 2,
+  PAUSED = 3,
+  LOSE = 4,
+  WIN = 5,
+}
+local wave_matched = false
+
+AMP_MAX = 100
+FREQ_MAX = 0.0628
+PHASE_MAX = 6
+
+screen_x = 110
+screen_y = 100
+screen_width = 390
+screen_height = 200
+
+
 sound = {}
 sound.rate = 44100  --sample rate
 sound.bits = 16     --bit rate
@@ -11,11 +30,15 @@ tau = math.pi*2
 function lerp(a, b, t) return a + (b - a) * t end -- linear interpolation
 
 function love.load()
-
     love.window.setMode(600, 400, { vsync = true, highdpi = true, resizable = true })
 
     -- qs = love.audio.newQueueableSource(tone:getSampleRate(), tone:getBitDepth(), tone:getChannelCount())
 
+    game_state = State.PLAYING
+
+
+    -- load audio
+    menu_music = love.audio.newSource("menu.mp3", "stream")
 
     wave_pos = {110, 200}
     player_wave = Wave:new(wave_pos[1], wave_pos[2])
@@ -29,8 +52,6 @@ function love.load()
 
     target_wave = Wave:new(wave_pos[1], wave_pos[2])
 
-    game_state = "not matched"
-
     -- seed star list
     -- (star seeds if you will)
     stars = {}
@@ -38,6 +59,10 @@ function love.load()
       table.insert(stars, math.random() * 600)
       table.insert(stars, math.random() * 400)
     end
+
+
+    -- randomize target for init
+    target_wave:randomize()
 end
 
 function love.keypressed(key) --, scancode, isrepeat).
@@ -47,7 +72,23 @@ function love.keypressed(key) --, scancode, isrepeat).
   -- end
 end
 
+function state_change(new_state)
+  if new_state == nil then
+    game_state = game_state + 1
+  else
+    game_state = new_state
+  end
+end
+
 function love.update(dt)
+
+  if game_state == State.MENU and not menu_music:isPlaying() then
+    -- love.audio.play(menu_music)
+  end
+  -- if game_state == State.PLAYING and not game_music:isPlaying() then
+    -- love.audio.play(game_music)
+  -- end
+
   t = t + dt
 
   freq_slider:update(dt)
@@ -65,6 +106,33 @@ function love.update(dt)
     end
   end
   math.randomseed(os.time())
+
+  -- check win condition
+  -- one off for amp is fine
+  -- 3 decimals for freq is all you need
+  -- phase is an anomoly
+  print(math.floor(player_wave.freq * 1000))
+  if player_wave.amplitude >= target_wave.amplitude - 1
+    and player_wave.amplitude <= target_wave.amplitude + 1
+    and math.floor(player_wave.freq * 1000) == math.floor(target_wave.freq * 1000)  then
+    -- and player_wave.phase == target_wave.phase then
+    print('cool')
+    wave_matched = true
+  else
+    wave_matched = false
+  end
+
+  -- if t % 2 then
+  --   target_wave:randomize(dt)
+  -- end
+
+  -- debugging click
+  if love.mouse.isDown(1) then
+    x, y = love.mouse.getPosition()
+    if x > 500 and y < 50 then
+      target_wave:randomize()
+    end
+  end
 
 end
 
@@ -85,24 +153,40 @@ function love.draw()
 
   -- draw screen
   lg.setColor(.7, .7, .7, 1)
-  lg.rectangle("fill", 108, 98, 394, 204)
+  lg.rectangle("fill", screen_x - 2, screen_y -2, screen_width + 4, screen_height + 4)
   lg.setColor(.05, .08, .05, 1)
-  lg.rectangle("fill", 110, 100, 390, 200)
+  lg.rectangle("fill", screen_x, screen_y, screen_width, screen_height)
 
   -- draw screen contents
-  target_wave:draw(t)
-  player_wave:draw(t)
+  if game_state == State.MENU then
+    MainMenu.draw(t)
+  end
+  if game_state == State.PLAYING then
+    target_wave:draw(t)
+    player_wave:draw(t)
 
-  amp_slider:draw()
-  freq_slider:draw()
-  phase_slider:draw()
+    amp_slider:draw()
+    freq_slider:draw()
+    phase_slider:draw()
+  end
 
-  if game_state == "matched" then
+  -- debugging square
+  if wave_matched then
     lg.setColor(0, 1,0,1)
   else
     lg.setColor(1, 0,0,1)
   end
-  -- lg.rectangle("fill", 500, 50, 50, 50)
+  lg.rectangle("fill", 500, 50, 50, 50)
+
+  print('---------------')
+  print('player amp', player_wave.amplitude)
+  print('player freq', player_wave.freq)
+  print('player phase', player_wave.phase)
+  print('-----')
+  print('target amp', target_wave.amplitude)
+  print('target freq', target_wave.freq)
+  print('target phase', target_wave.phase)
+  print('---------------')
 
 end
 
@@ -139,9 +223,6 @@ function Wave:new(x, y)
 end
 function Wave:update(dt)
 
-  print('amp', self.amplitude)
-  print('freq', self.freq)
-  print('phase', self.phase)
 
   self.vals = {}
   for x=0,3900 do
@@ -152,7 +233,6 @@ function Wave:update(dt)
     table.insert(self.vals, self.x + graph_x*390)
     table.insert(self.vals, -self.amplitude * math.sin(self.freq * (x + self.phase*3000)) + self.y)
   end
-
 end
 function Wave:draw(t)
   col = (t/3 % 1) * 10
@@ -163,14 +243,23 @@ function Wave:draw(t)
   end
   lg.points(self.vals)
 end
+function Wave:randomize()
+  self.amplitude = math.random() * AMP_MAX
+  self.freq = math.random() * FREQ_MAX
+  self.phase = math.random() * PHASE_MAX
+  -- print('amp', self.amplitude)
+  -- print('freq', self.freq)
+  -- print('phase', self.phase)
+
+end
+
+
 
 -- function graph_to_pixel(graph_x, graph_y, window_x, window_y)
 --   x = (graph_x / 6.28) * window_x
 --   y = (graph_y / 100) * window_y
 --   return x, y
 -- end
-
-
 
 
 
@@ -223,5 +312,20 @@ function Slider:draw(dt)
   lg.rectangle("fill", self.x, self.y, size[1], size[2])
   lg.rectangle("fill", self.ball_x, self.ball_y, 3, 9)
   -- lg.circle("fill", self.ball_x, self.ball_y, 5)
+end
+
+MainMenu = {}
+function MainMenu.draw(t)
+  menu_buttons = {
+    {screen_x + screen_width/4, screen_y + 100},
+  }
+  lg.setColor(.2, .7, .2, .8)
+  lg.rectangle("line", screen_x + screen_width/4, screen_y + 100, screen_width/2, 25)
+  lg.rectangle("line", screen_x + screen_width/4, screen_y + 100, screen_width/2, 25)
+  lg.rectangle("line", screen_x + screen_width/4, screen_y + 100, screen_width/2, 25)
+  lg.setColor(0, 138/255, 2/255, 1)
+  lg.rectangle("fill", screen_x + screen_width/4, screen_y + 100, screen_width/2, 25)
+
+  lg.draw(captain_title, screen_x, screen_y)
 end
 

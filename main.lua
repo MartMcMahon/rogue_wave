@@ -9,6 +9,9 @@ local TITLE_TEXT = [[
 TITLE_SML = "Rogue Wave"
 TITLE_UPPER = "ROGUE WAVE"
 
+local GREEN = {20/255, 209/255, 6/255, 1}
+
+local denver = require 'denver'
 local lg = love.graphics
 local t = 0
 
@@ -20,6 +23,7 @@ local State = {
   WIN = 5,
 }
 local wave_matched = false
+local level = 1
 
 AMP_MAX = 100
 FREQ_MAX = 0.0628
@@ -58,6 +62,7 @@ function love.load()
 
     -- load audio
     menu_music = love.audio.newSource("menu.mp3", "stream")
+    game_music = love.audio.newSource("game.mp3", "stream")
 
     wave_pos = {110, 200}
     player_wave = Wave:new(wave_pos[1], wave_pos[2])
@@ -100,13 +105,17 @@ function state_change(new_state)
 end
 
 function love.update(dt)
+  if game_state == State.MENU then
+    MainMenu.update(dt)
+  end
 
   if game_state == State.MENU and not menu_music:isPlaying() then
     love.audio.play(menu_music)
   end
-  -- if game_state == State.PLAYING and not game_music:isPlaying() then
-  --   love.audio.play(game_music)
-  -- end
+  if game_state == State.PLAYING and not game_music:isPlaying() then
+    love.audio.stop(menu_music)
+    love.audio.play(game_music)
+  end
 
   t = t + dt
 
@@ -116,6 +125,8 @@ function love.update(dt)
   player_wave:update(dt)
 
   target_wave:update(dt)
+  target_wave.phase = target_wave.phase + dt/math.pi
+  -- math.random(2, ) 2
 
   -- update star list
   for i=1,#stars do
@@ -130,12 +141,23 @@ function love.update(dt)
   -- one off for amp is fine
   -- 3 decimals for freq is all you need
   -- phase is an anomoly
-  print(math.floor(player_wave.freq * 1000))
-  if player_wave.amplitude >= target_wave.amplitude - 1
-    and player_wave.amplitude <= target_wave.amplitude + 1
+  -- print(math.floor(player_wave.freq * 1000))
+  if player_wave.amplitude >= 0.8 * target_wave.amplitude
+    and player_wave.amplitude <= 1.2 * target_wave.amplitude
     and math.floor(player_wave.freq * 1000) == math.floor(target_wave.freq * 1000)  then
     -- and player_wave.phase == target_wave.phase then
-    print('cool')
+
+    -- play a sinus of 1sec at 440Hz
+
+    if level > 0 then
+      local sine = denver.get({waveform='sinus', frequency=player_wave.freq * 12000, length=1})
+      love.audio.play(sine)
+    end
+
+    -- play a F#2 (available os)
+    -- local square = denver.get({waveform='square', frequency='F#2', length=1})
+    -- love.audio.play(square)
+
     wave_matched = true
   else
     wave_matched = false
@@ -145,6 +167,20 @@ function love.update(dt)
   --   target_wave:randomize(dt)
   -- end
 
+  -- check for click on enter button
+  if love.mouse.isDown(1) then
+    x, y = love.mouse.getPosition()
+    if x > enter_button_x and x < enter_button_x + enter_button_width and
+      y > enter_button_y and y < enter_button_y + enter_button_height then
+      if wave_matched then
+        level = level + 1
+        print('new level', level)
+        target_wave:randomize()
+      end
+    end
+  end
+
+
   -- debugging click
   if love.mouse.isDown(1) then
     x, y = love.mouse.getPosition()
@@ -152,7 +188,6 @@ function love.update(dt)
       target_wave:randomize()
     end
   end
-
 end
 
 
@@ -169,6 +204,21 @@ function love.draw()
   lg.setColor(.1, .1, .1, 1)
   lg.rectangle("fill", 90, 0, 20, 400)
   lg.rectangle("fill", 500, 0, 20, 400)
+
+  -- draw enter button
+  enter_button_x = 450
+  enter_button_y = 325
+  enter_button_width = 25
+  enter_button_height = 25
+
+  lg.setColor(181/255, 175/255, 158/255, .6)
+  if wave_matched then
+    lg.setColor(unpack(GREEN))
+  elseif math.floor(t) % 3 == 0 then
+    lg.setColor(1, 189/255, 8/255, 1)
+  end
+
+  lg.rectangle("fill", enter_button_x, enter_button_y, enter_button_width, enter_button_height, enter_button_width/3, enter_button_height/3)
 
   -- draw screen
   lg.setColor(.7, .7, .7, 1)
@@ -189,23 +239,24 @@ function love.draw()
     phase_slider:draw()
   end
 
+  lg.setColor(20/255, 209/255, 6/255, 1)
   -- debugging square
-  if wave_matched then
-    lg.setColor(0, 1,0,1)
-  else
-    lg.setColor(1, 0,0,1)
-  end
+  -- if wave_matched then
+  --   lg.setColor(0, 1,0,1)
+  -- else
+  --   lg.setColor(1, 0,0,1)
+  -- end
   lg.rectangle("fill", 500, 50, 50, 50)
 
-  print('---------------')
-  print('player amp', player_wave.amplitude)
-  print('player freq', player_wave.freq)
-  print('player phase', player_wave.phase)
-  print('-----')
-  print('target amp', target_wave.amplitude)
-  print('target freq', target_wave.freq)
-  print('target phase', target_wave.phase)
-  print('---------------')
+  -- print('---------------')
+  -- print('player amp', player_wave.amplitude)
+  -- print('player freq', player_wave.freq)
+  -- print('player phase', player_wave.phase)
+  -- print('-----')
+  -- print('target amp', target_wave.amplitude)
+  -- print('target freq', target_wave.freq)
+  -- print('target phase', target_wave.phase)
+  -- print('---------------')
 
 end
 
@@ -251,7 +302,7 @@ function Wave:update(dt)
   for x=0,3900 do
     -- x = x/1000
     graph_x = x/3900
-    graph_y = -self.amplitude * math.sin(self.freq/100 * (graph_x + self.phase))
+    -- graph_y = -self.amplitude * math.sin(self.freq/100 * (graph_x + self.phase))
 
     table.insert(self.vals, self.x + graph_x*390)
     table.insert(self.vals, -self.amplitude * math.sin(self.freq * (x + self.phase*3000)) + self.y)
@@ -303,7 +354,6 @@ function Slider:new(x, y, min, max, type, val)
   self.ball_y = self.y
   self.type = type
   self.wave = {amplitude = nil, freq = nil, phase = nil}
-  print(self.wave)
 
   if not self.max then
     print('nothing for max')
@@ -337,18 +387,50 @@ function Slider:draw(dt)
   -- lg.circle("fill", self.ball_x, self.ball_y, 5)
 end
 
-MainMenu = {}
-function MainMenu.draw(t)
-  menu_buttons = {
-    {screen_x + screen_width/4, screen_y + 100},
-  }
-  lg.setColor(.2, .7, .2, .8)
-  lg.rectangle("line", screen_x + screen_width/4, screen_y + 100, screen_width/2, 25)
-  lg.rectangle("line", screen_x + screen_width/4, screen_y + 100, screen_width/2, 25)
-  lg.rectangle("line", screen_x + screen_width/4, screen_y + 100, screen_width/2, 25)
-  lg.setColor(0, 138/255, 2/255, 1)
-  lg.rectangle("fill", screen_x + screen_width/4, screen_y + 100, screen_width/2, 25)
 
-  lg.draw(unicode_title, screen_x, screen_y)
+
+
+start_button_x = 0
+start_button_y = 0
+start_button_width = 0
+start_button_height = 0
+MainMenu = {}
+function MainMenu.update(dt)
+  if love.mouse.isDown(1) then
+      print("start")
+    x, y = love.mouse.getPosition()
+    if x > start_button_x and x < start_button_x + start_button_width
+      and y > start_button_y and y < start_button_y + start_button_height then
+      print("start")
+      game_state = State.PLAYING
+    end
+  end
+end
+function MainMenu.draw(t)
+  -- menu_buttons = { {screen_x + screen_width/4, screen_y + 100}, }
+  start_button_width = 1.2 * screen_width/2
+  start_button_x = screen_x + screen_width/2 - start_button_width/2
+  start_button_y = screen_y + 100
+  start_button_height = 60
+
+  lg.setColor(.2, .7, .2, .8)
+  lg.rectangle("line", start_button_x, start_button_y, start_button_width, start_button_height)
+  -- lg.setColor(0, 138/255, 2/255, 1)
+  lg.setColor(unpack(GREEN))
+
+  lg.rectangle("fill", start_button_x, start_button_y, start_button_width, start_button_height)
+
+  lg.draw(unicode_title, screen_x + 30, screen_y + 1)
+  start_text = lg.newText(unicode_font, BLOCK_START_TEXT)
+  lg.setColor(0, 0, 0, 1)
+  lg.draw(start_text, start_button_x + 33, start_button_y + 3)
 end
 
+BLOCK_START_TEXT = [[
+███████╗████████╗ █████╗ ██████╗ ████████╗
+██╔════╝╚══██╔══╝██╔══██╗██╔══██╗╚══██╔══╝
+███████╗   ██║   ███████║██████╔╝   ██║
+╚════██║   ██║   ██╔══██║██╔══██╗   ██║
+███████║   ██║   ██║  ██║██║  ██║   ██║
+╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝
+]]

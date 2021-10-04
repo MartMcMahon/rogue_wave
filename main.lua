@@ -17,10 +17,11 @@ local t = 0
 
 local State = {
   MENU = 1,
-  PLAYING = 2,
-  PAUSED = 3,
-  LOSE = 4,
-  WIN = 5,
+  TUT = 2,
+  PLAYING = 3,
+  -- PAUSED = 3,
+  -- LOSE = 4,
+  -- WIN = 5,
 }
 local wave_matched = false
 local level = 1
@@ -33,7 +34,6 @@ screen_x = 110
 screen_y = 100
 screen_width = 390
 screen_height = 200
-
 
 sound = {}
 sound.rate = 44100  --sample rate
@@ -52,17 +52,26 @@ function love.load()
     game_state = State.MENU
 
     -- load font
-    -- unispace_font = lg.newFont("unispace/unispace rg.ttf", 60)
-    -- captain = lg.newFont("captain-lethargic-font/CaptainLethargic.ttf", 60)
+    space_font = lg.newFont("unispace/unispace rg.ttf", 16)
     unicode_font = lg.newFont("unifont-14.0.01.ttf", 8)
 
+    tutorial_string = [[
+There is interference preventing
+communications!
+Match ship's signal to counter the
+interference wave pattern.
+Modulate with the bars on the control
+panel and press the button when they
+match.
+interference condition: UNSTABLE
+]]
     unicode_title = lg.newText(unicode_font, TITLE_TEXT)
-    -- unispace_title = lg.newText(unispace_font, TITLE_SML)
-    -- captain_title = lg.newText(captain, TITLE_SML)
+    tutorial_text = lg.newText(space_font, tutorial_string)
 
     -- load audio
     menu_music = love.audio.newSource("menu.mp3", "stream")
     game_music = love.audio.newSource("game.mp3", "stream")
+    menu_select_sound = love.audio.newSource("select.mp3", "static")
 
     wave_pos = {110, 200}
     player_wave = Wave:new(wave_pos[1], wave_pos[2])
@@ -110,6 +119,7 @@ function love.update(dt)
   end
 
   if game_state == State.MENU and not menu_music:isPlaying() then
+    love.audio.stop(game_music)
     love.audio.play(menu_music)
   end
   if game_state == State.PLAYING and not game_music:isPlaying() then
@@ -149,7 +159,7 @@ function love.update(dt)
 
     -- play a sinus of 1sec at 440Hz
 
-    if level > 0 then
+    if game_state >= State.PLAYING then
       local sine = denver.get({waveform='sinus', frequency=player_wave.freq * 12000, length=1})
       love.audio.play(sine)
     end
@@ -163,6 +173,10 @@ function love.update(dt)
     wave_matched = false
   end
 
+  if game_state == State.TUT then
+    wave_matched = true
+  end
+
   -- if t % 2 then
   --   target_wave:randomize(dt)
   -- end
@@ -173,23 +187,24 @@ function love.update(dt)
     if x > enter_button_x and x < enter_button_x + enter_button_width and
       y > enter_button_y and y < enter_button_y + enter_button_height then
       if wave_matched then
-        level = level + 1
-        print('new level', level)
+        game_state = game_state + 1
         target_wave:randomize()
       end
     end
   end
 
 
-  -- debugging click
-  if love.mouse.isDown(1) then
-    x, y = love.mouse.getPosition()
-    if x > 500 and y < 50 then
-      target_wave:randomize()
+
+
+  -- check for escape
+  if love.keyboard.isDown('escape') then
+    if game_state == State.MENU then
+      love.event.quit(0)
+    else
+      game_state = State.MENU
     end
   end
 end
-
 
 function love.draw()
   -- draw stars
@@ -229,8 +244,11 @@ function love.draw()
   -- draw screen contents
   if game_state == State.MENU then
     MainMenu.draw(t)
+  elseif game_state == State.TUT then
+    lg.setColor(GREEN)
+    lg.draw(tutorial_text, screen_x + 2, screen_y +2)
   end
-  if game_state == State.PLAYING then
+  if game_state >= State.PLAYING then
     target_wave:draw(t)
     player_wave:draw(t)
 
@@ -238,15 +256,6 @@ function love.draw()
     freq_slider:draw()
     phase_slider:draw()
   end
-
-  lg.setColor(20/255, 209/255, 6/255, 1)
-  -- debugging square
-  -- if wave_matched then
-  --   lg.setColor(0, 1,0,1)
-  -- else
-  --   lg.setColor(1, 0,0,1)
-  -- end
-  lg.rectangle("fill", 500, 50, 50, 50)
 
   -- print('---------------')
   -- print('player amp', player_wave.amplitude)
@@ -292,11 +301,6 @@ function Wave:new(x, y)
   return self
 end
 function Wave:update(dt)
-
-  -- print('amp', self.amplitude)
-  -- print('freq', self.freq)
-  -- print('phase', self.phase)
-  --
 
   self.vals = {}
   for x=0,3900 do
@@ -402,7 +406,7 @@ function MainMenu.update(dt)
     if x > start_button_x and x < start_button_x + start_button_width
       and y > start_button_y and y < start_button_y + start_button_height then
       print("start")
-      game_state = State.PLAYING
+      game_state = State.TUT
     end
   end
 end

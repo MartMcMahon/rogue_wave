@@ -45,7 +45,7 @@ function love.load()
 
     -- qs = love.audio.newQueueableSource(tone:getSampleRate(), tone:getBitDepth(), tone:getChannelCount())
 
-    game_state = State.PLAYING
+    game_state = State.MENU
 
     -- load font
     -- unispace_font = lg.newFont("unispace/unispace rg.ttf", 60)
@@ -57,7 +57,7 @@ function love.load()
     -- captain_title = lg.newText(captain, TITLE_SML)
 
     -- load audio
-    -- menu_music = love.audio.newSource("menu.mp3", "stream")
+    menu_music = love.audio.newSource("menu.mp3", "stream")
 
     wave_pos = {110, 200}
     player_wave = Wave:new(wave_pos[1], wave_pos[2])
@@ -102,10 +102,10 @@ end
 function love.update(dt)
 
   if game_state == State.MENU and not menu_music:isPlaying() then
-    -- love.audio.play(menu_music)
+    love.audio.play(menu_music)
   end
   -- if game_state == State.PLAYING and not game_music:isPlaying() then
-    -- love.audio.play(game_music)
+  --   love.audio.play(game_music)
   -- end
 
   t = t + dt

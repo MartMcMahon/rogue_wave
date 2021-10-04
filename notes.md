@@ -1,12 +1,3 @@
-* THEME - Unstable
-
-** based on market speculation
-unstable markets
-
-need market sim
-
-
-** fps
-shoot other crypto people to make price go up?
-
-
+* stars
+** make into class
+** add red and yellow brighter stars

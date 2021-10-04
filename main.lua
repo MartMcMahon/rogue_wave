@@ -17,15 +17,27 @@ function love.load()
     -- qs = love.audio.newQueueableSource(tone:getSampleRate(), tone:getBitDepth(), tone:getChannelCount())
 
 
-    wave_pos = {50, 90}
-    wave = Wave:new(wave_pos[1], wave_pos[2])
+    wave_pos = {110, 200}
+    player_wave = Wave:new(wave_pos[1], wave_pos[2])
+    player_wave.isPlayer = true
     amp_slider = Slider:new(130, 320, 1, 100, "amplitude", 40)
     freq_slider = Slider:new(130, 340, 0, .0628, "freq", 0.01)
     phase_slider = Slider:new(130, 360, 0, 6, "phase", 0)
+    amp_slider.wave = player_wave
+    freq_slider.wave = player_wave
+    phase_slider.wave = player_wave
 
-    amp_slider.wave = wave
-    freq_slider.wave = wave
-    phase_slider.wave = wave
+    target_wave = Wave:new(wave_pos[1], wave_pos[2])
+
+    game_state = "not matched"
+
+    -- seed star list
+    -- (star seeds if you will)
+    stars = {}
+    for x=1,100 do
+      table.insert(stars, math.random() * 600)
+      table.insert(stars, math.random() * 400)
+    end
 end
 
 function love.keypressed(key) --, scancode, isrepeat).
@@ -41,16 +53,57 @@ function love.update(dt)
   freq_slider:update(dt)
   amp_slider:update(dt)
   phase_slider:update(dt)
-  wave:update(dt)
+  player_wave:update(dt)
+
+  target_wave:update(dt)
+
+  -- update star list
+  for i=1,#stars do
+    if i % 2 == 0 then
+      math.randomseed(i)
+      stars[i] = (stars[i] + 1 + math.random()) % 400
+    end
+  end
+  math.randomseed(os.time())
+
 end
 
+
 function love.draw()
-  love.graphics.setColor(255, 255, 255, 1)
-  wave:draw(t)
+  -- draw stars
+  lg.setColor(1, 1, 1, 1)
+  lg.points(stars)
+
+  -- draw ship
+  lg.setColor(82/255, 73/255, 62/255, 1)
+  lg.rectangle("fill", 100, 300, 400, 100)
+  lg.polygon("fill", 100, 300, 0, 360, 0, 400, 100, 400)
+  lg.polygon("fill", 510, 300, 600, 360, 600, 400, 500, 400)
+  lg.setColor(.1, .1, .1, 1)
+  lg.rectangle("fill", 90, 0, 20, 400)
+  lg.rectangle("fill", 500, 0, 20, 400)
+
+  -- draw screen
+  lg.setColor(.7, .7, .7, 1)
+  lg.rectangle("fill", 108, 98, 394, 204)
+  lg.setColor(.05, .08, .05, 1)
+  lg.rectangle("fill", 110, 100, 390, 200)
+
+  -- draw screen contents
+  target_wave:draw(t)
+  player_wave:draw(t)
 
   amp_slider:draw()
   freq_slider:draw()
   phase_slider:draw()
+
+  if game_state == "matched" then
+    lg.setColor(0, 1,0,1)
+  else
+    lg.setColor(1, 0,0,1)
+  end
+  -- lg.rectangle("fill", 500, 50, 50, 50)
+
 end
 
 -- Constructor for a sine wave generator.
@@ -78,9 +131,10 @@ function Wave:new(x, y)
   self.x = x
   self.y = y
   self.vals = {}
-  self.amplitude = 1
-  self.freq = 1
+  self.amplitude = 30
+  self.freq = 0.01
   self.phase = 0
+  self.isPlayer = false
   return self
 end
 function Wave:update(dt)
@@ -90,29 +144,23 @@ function Wave:update(dt)
   print('phase', self.phase)
 
   self.vals = {}
-  for x=0,3000 do
+  for x=0,3900 do
     -- x = x/1000
-    graph_x = x/3000
+    graph_x = x/3900
     graph_y = -self.amplitude * math.sin(self.freq/100 * (graph_x + self.phase))
 
-    -- print("---------------------")
-    -- print(" | " .. graph_x .. " | ")
-    -- print(" | " .. graph_y .. " | ")
-    -- print("---------------------")
-
-    -- new_x, new_y = graph_to_pixel(graph_x, graph_y, 300, 200)
-    -- table.insert(self.vals, graph_x*100 + self.x)
-    -- table.insert(self.vals, new_y + self.y)
-
-    table.insert(self.vals, self.x + graph_x*300)
+    table.insert(self.vals, self.x + graph_x*390)
     table.insert(self.vals, -self.amplitude * math.sin(self.freq * (x + self.phase*3000)) + self.y)
   end
 
 end
 function Wave:draw(t)
   col = (t/3 % 1) * 10
-  -- lg.setColor(col, col, col, t
-  lg.setColor(1, 1, 1, (t % 1/2) +.3)
+  if self.isPlayer then
+    lg.setColor(1, 1, 1, (t % 1/2) +.3)
+  else
+    lg.setColor(0, 1, 0, (t % 1/2) + .3)
+  end
   lg.points(self.vals)
 end
 

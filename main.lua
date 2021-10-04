@@ -48,16 +48,16 @@ function love.load()
     game_state = State.PLAYING
 
     -- load font
-    unispace_font = lg.newFont("unispace/unispace rg.ttf", 60)
-    captain = lg.newFont("captain-lethargic-font/CaptainLethargic.ttf", 60)
+    -- unispace_font = lg.newFont("unispace/unispace rg.ttf", 60)
+    -- captain = lg.newFont("captain-lethargic-font/CaptainLethargic.ttf", 60)
     unicode_font = lg.newFont("unifont-14.0.01.ttf", 8)
 
     unicode_title = lg.newText(unicode_font, TITLE_TEXT)
-    unispace_title = lg.newText(unispace_font, TITLE_SML)
-    captain_title = lg.newText(captain, TITLE_SML)
+    -- unispace_title = lg.newText(unispace_font, TITLE_SML)
+    -- captain_title = lg.newText(captain, TITLE_SML)
 
     -- load audio
-    menu_music = love.audio.newSource("menu.mp3", "stream")
+    -- menu_music = love.audio.newSource("menu.mp3", "stream")
 
     wave_pos = {110, 200}
     player_wave = Wave:new(wave_pos[1], wave_pos[2])
@@ -349,6 +349,6 @@ function MainMenu.draw(t)
   lg.setColor(0, 138/255, 2/255, 1)
   lg.rectangle("fill", screen_x + screen_width/4, screen_y + 100, screen_width/2, 25)
 
-  lg.draw(captain_title, screen_x, screen_y)
+  lg.draw(unicode_title, screen_x, screen_y)
 end
 

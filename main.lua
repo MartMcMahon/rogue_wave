@@ -1,3 +1,14 @@
+local TITLE_TEXT = [[
+██████╗  ██████╗  ██████╗ ██╗   ██╗███████╗    ██╗    ██╗ █████╗ ██╗   ██╗███████╗
+██╔══██╗██╔═══██╗██╔════╝ ██║   ██║██╔════╝    ██║    ██║██╔══██╗██║   ██║██╔════╝
+██████╔╝██║   ██║██║  ███╗██║   ██║█████╗      ██║ █╗ ██║███████║██║   ██║█████╗
+██╔══██╗██║   ██║██║   ██║██║   ██║██╔══╝      ██║███╗██║██╔══██║╚██╗ ██╔╝██╔══╝
+██║  ██║╚██████╔╝╚██████╔╝╚██████╔╝███████╗    ╚███╔███╔╝██║  ██║ ╚████╔╝ ███████╗
+╚═╝  ╚═╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚══════╝     ╚══╝╚══╝ ╚═╝  ╚═╝  ╚═══╝  ╚══════╝
+]]
+TITLE_SML = "Rogue Wave"
+TITLE_UPPER = "ROGUE WAVE"
+
 local lg = love.graphics
 local t = 0
 
@@ -36,6 +47,14 @@ function love.load()
 
     game_state = State.PLAYING
 
+    -- load font
+    unispace_font = lg.newFont("unispace/unispace rg.ttf", 60)
+    captain = lg.newFont("captain-lethargic-font/CaptainLethargic.ttf", 60)
+    unicode_font = lg.newFont("unifont-14.0.01.ttf", 8)
+
+    unicode_title = lg.newText(unicode_font, TITLE_TEXT)
+    unispace_title = lg.newText(unispace_font, TITLE_SML)
+    captain_title = lg.newText(captain, TITLE_SML)
 
     -- load audio
     menu_music = love.audio.newSource("menu.mp3", "stream")
@@ -223,6 +242,10 @@ function Wave:new(x, y)
 end
 function Wave:update(dt)
 
+  -- print('amp', self.amplitude)
+  -- print('freq', self.freq)
+  -- print('phase', self.phase)
+  --
 
   self.vals = {}
   for x=0,3900 do
